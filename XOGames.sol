@@ -8,6 +8,7 @@ contract XOGames{
     address[] public gameBoards;
     uint8[9] board;
     uint public gameCount; // число активных игр
+    uint256 commission = 5; // комиссия за использование платформы 5% ;-)
     
     // статусы игры
     enum StatusGame {
@@ -26,6 +27,7 @@ contract XOGames{
         Player player1; // игрок 1, он инициирует игру
         Player player2; // игрок 2, он присоединяется к игре
         uint8 statusGame; // статус игры
+        uint8 step;
         uint256 balance; // баланс игры
     }
     
@@ -69,10 +71,11 @@ contract XOGames{
             ErrorAddress("You have already created a game");
             return;
         }
-        gameBoard = new XOGameBoard();
+        gameBoard = new XOGameBoard(msg.sender);
         gameBoards.push(gameBoard);
         players[msg.sender] = 1; // игрок готов к игре
         games[gameBoard].player1.player = msg.sender;
+        games[gameBoard].step = 1;
         games[gameBoard].statusGame = uint8(StatusGame.GAME_EXPECTED); // статус игры "в ожитании"
         games[gameBoard].balance = msg.value; // запись ставки первого игрока
         CreateGame("New game create in address", gameBoard, "rate", msg.value);
@@ -106,37 +109,68 @@ contract XOGames{
         }
     }
     
-    function move(uint8 x, uint8 y, XOGameBoard gameBoard) public{
+    function move(uint8 _pos, XOGameBoard gameBoard) public{
         uint8 _player;
         uint8 status;
+        uint256 money;
+        
         if(gameBoard == address(0x0)){
             ErrorAddress("Error game address!");
             return;
         }
-        if(games[gameBoard].player1.player == msg.sender){
+        if(games[gameBoard].player1.player == msg.sender && games[gameBoard].step == 1){
             _player = 1;
+            games[gameBoard].step = 2;
             Move("Plaeyr 1 move");
-        }
-        if(games[gameBoard].player2.player == msg.sender){
+        } else if(games[gameBoard].player2.player == msg.sender && games[gameBoard].step == 2){
             _player = 2;
+            games[gameBoard].step = 1;
             Move("Plaeyr 2 move");
         }
-        // status = gameBoard.move(x, y, _player);
+        status = gameBoard.move(_pos, _player);
         
-        // if(gameBoard.move(x, y, _player) == 1){
-        //     Win("Player 1 is WIN!");
-        // }
-        // if(gameBoard.move(x, y, _player) == 2){
-        //     Win("Player 2 is WIN!");
-        // }
-        // if(gameBoard.move(x, y, _player) == 3){
-        //     Win("In game is DRAW!");
-        // }
+        if(gameBoard.move(_pos, _player) == 1){
+            // оправка вознаграждения за вычетом комиссия
+            money = games[gameBoard].balance - ((games[gameBoard].balance * commission) / 100);
+            games[gameBoard].player1.player.transfer(money);
+            players[games[gameBoard].player1.player] = 0;
+            players[games[gameBoard].player2.player] = 0;
+            gameBoards[uint256(gameBoard)] = 0x0;
+            games[gameBoard].statusGame = uint8(StatusGame.GAME_OVER);
+            gameBoard.kill(games[gameBoard].player1.player);
+            Win("Player 1 is WIN!");
+        }
+        if(gameBoard.move(_pos, _player) == 2){
+            // оправка вознаграждения за вычетом комиссия
+            money = games[gameBoard].balance - ((games[gameBoard].balance * commission) / 100);
+            games[gameBoard].player2.player.transfer(money);
+            players[games[gameBoard].player1.player] = 0;
+            players[games[gameBoard].player2.player] = 0;
+            gameBoards[uint256(gameBoard)] = 0x0;
+            games[gameBoard].statusGame = uint8(StatusGame.GAME_OVER);
+            gameBoard.kill(games[gameBoard].player1.player);
+            Win("Player 2 is WIN!");
+        }
+        if(gameBoard.move(_pos, _player) == 3){
+            // оправка вознаграждения за вычетом комиссия
+            money = games[gameBoard].balance - ((games[gameBoard].balance * commission) / 100);
+            games[gameBoard].player1.player.transfer(money / 2);
+            games[gameBoard].player2.player.transfer(money / 2);
+            players[games[gameBoard].player1.player] = 0;
+            players[games[gameBoard].player2.player] = 0;
+            gameBoards[uint256(gameBoard)] = 0x0;
+            games[gameBoard].statusGame = uint8(StatusGame.GAME_OVER);
+            gameBoard.kill(games[gameBoard].player1.player);
+            Win("In game is DRAW!");
+        }
     }
     
-    // function getBoard(XOGameBoard gameBoard) public{
-    //     board = gameBoard.getBoard();
-    //     Board(board[0], board[1], board[2], board[3], (board[4]), board[5], board[6], (board[7]), board[8]);
-    // }
+    function getBoard(XOGameBoard gameBoard) public{
+        board = gameBoard.getBoard();
+        Board(board[0], board[1], board[2], board[3], (board[4]), board[5], board[6], (board[7]), board[8]);
+    }
     
+    function thisBalance() public returns(uint256){ 
+        return this.balance;
+    }
 }
