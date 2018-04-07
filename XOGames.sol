@@ -5,7 +5,7 @@ import "./XOGameBoard.sol";
 contract XOGames{
     address owner; // владелец контракта
     uint256 commission = 5; // комиссия за использование платформы 5% ;-)
-    
+    uint256 public numberOpenGames;
     
     // статусы игры
     enum StatusGame {
@@ -16,11 +16,18 @@ contract XOGames{
     // структура игры
     struct Game{
         address player1; // игрок 1, он инициирует игру
-        address player2; // игрок 2, он присоединяется к игре
         uint256 rate;
+        uint256 numGame;
         StatusGame statusGame; // статус игры
     }
     
+    struct OpenGame{
+        address addressGameBoard;
+        uint256 rateInGame;
+    }
+
+    mapping(uint256 => OpenGame) public openGames;
+
     mapping(address => Game) public games; // игры
     
     // модификатор прав владельуа контракта
@@ -33,17 +40,25 @@ contract XOGames{
     
     function XOGames() public {
         owner = msg.sender;
+        numberOpenGames = 0;
+    }
+    
+    function setCommission(uint256 _commission) public isOwner returns(uint256){
+        commission = _commission;
+        return commission;
     }
     
     function createGame() public payable returns(XOGameBoard gameBoard){
         require(msg.value != 0);
+        numberOpenGames++;
         gameBoard = (new XOGameBoard).value((msg.value - (msg.value * commission / 100)))(msg.sender);
         games[gameBoard].player1 = msg.sender;
         games[gameBoard].statusGame = StatusGame.GAME_EXPECTED;
         games[gameBoard].rate = msg.value;
-        // gamesExpected.push(gameBoard);
-        // rateInGames.push(msg.value);
-        Info(gameBoard);
+        games[gameBoard].numGame = numberOpenGames;
+        openGames[numberOpenGames].addressGameBoard = gameBoard;
+        openGames[numberOpenGames].rateInGame = msg.value;
+        emit Info(gameBoard);
         return gameBoard;
     }
     
@@ -51,9 +66,12 @@ contract XOGames{
         require(games[gameBoard].statusGame != StatusGame.GAME_START);
         require(msg.value != 0);
         require(games[gameBoard].rate == msg.value);
-        games[gameBoard].player2 = msg.sender;
         games[gameBoard].statusGame = StatusGame.GAME_START;
         gameBoard.setRate.value((msg.value - (msg.value * commission / 100)))(msg.sender);
+        delete openGames[games[gameBoard].numGame];
+        delete games[gameBoard];
+        
+        return true;
     }
     
     function getThisBalance() public view returns(uint256){
