@@ -36,7 +36,7 @@ contract XOGames{
         _;
     }
     
-    event Info(address _info);
+    event GameWait(address _address, uint256 _rate);
     
     function XOGames() public {
         owner = msg.sender;
@@ -58,11 +58,12 @@ contract XOGames{
         games[gameBoard].numGame = numberOpenGames;
         openGames[numberOpenGames].addressGameBoard = gameBoard;
         openGames[numberOpenGames].rateInGame = msg.value;
-        emit Info(gameBoard);
+        emit GameWait(gameBoard, msg.value);
         return gameBoard;
     }
     
     function joinToGame(XOGameBoard gameBoard) public payable returns(bool){
+        require(msg.sender != games[gameBoard].player1);
         require(games[gameBoard].statusGame != StatusGame.GAME_START);
         require(msg.value != 0);
         require(games[gameBoard].rate == msg.value);
@@ -74,8 +75,8 @@ contract XOGames{
         return true;
     }
     
-    function getThisBalance() public view returns(uint256){
-        return address(this).balance;
+    function sendBalance(address _address) public payable isOwner returns(bool){
+        _address.transfer(address(this).balance);
     }
     
     // уничтожение контракта

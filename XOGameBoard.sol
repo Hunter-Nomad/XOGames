@@ -4,9 +4,9 @@ contract XOGameBoard{
     
     address internal player1; // игрок 1, он инициирует игру
     address internal player2; // игрок 2, он присоединяется к игре
-    uint8[10] internal board; // игровая доска
-    uint8 step; // текущий номер хода в игре
-    uint8 chip;
+    uint8[9] internal board; // игровая доска
+    uint8 internal step; // текущий номер хода в игре
+    uint8 internal chip;
     
     enum StatusGame{PLAYER1, PLAYER2}
     StatusGame statusGame;
@@ -18,7 +18,7 @@ contract XOGameBoard{
     }
     
     event RunPlayer(string _player);
-    event Winnner(string _player, uint256 _balance);
+    event Winner(string _player);
     
     function XOGameBoard(address player) public payable{
         player1 = player;
@@ -30,37 +30,39 @@ contract XOGameBoard{
         player2 = player;
     }
     
-    ////////////// 
+    // Game Board //
     // 1 2 3 
     // 4 5 6 
-    // 7 8 9
+    // 7 8 9 
     
+    // Check who winner in game
     function checkWinner(uint8 pos) internal isPlayer returns(uint8){
+        uint8 _pos;
         if(msg.sender == player1 && statusGame == StatusGame.PLAYER1){
             chip = 1;
             statusGame = StatusGame.PLAYER2;
-            emit RunPlayer("Now step Player 2");
+            emit RunPlayer("Next step Player 2");
         }
         if(msg.sender == player2 && statusGame == StatusGame.PLAYER2){
             chip = 2;
             statusGame = StatusGame.PLAYER1;
-            emit RunPlayer("Now step Player 1");
+            emit RunPlayer("Next step Player 1");
         }
         
-        step++;
-        board[pos - 1] = chip;
-        if(step >= 5 && step < 9){
-            if(pos == 1){ return cell1(chip); }
-            if(pos == 2){ return cell2(chip); }
-            if(pos == 3){ return cell3(chip); }
-            if(pos == 4){ return cell4(chip); }
-            if(pos == 5){ return cell5(chip); }
-            if(pos == 6){ return cell6(chip); }
-            if(pos == 7){ return cell7(chip); }
-            if(pos == 8){ return cell8(chip); }
-            if(pos == 9){ return cell9(chip); }
+        _pos = pos - 1;
+        board[_pos] = chip;
+        if(step == 5 && step < 9){
+            if(_pos == 0){ return cell1(chip); }
+            if(_pos == 1){ return cell2(chip); }
+            if(_pos == 2){ return cell3(chip); }
+            if(_pos == 3){ return cell4(chip); }
+            if(_pos == 4){ return cell5(chip); }
+            if(_pos == 5){ return cell6(chip); }
+            if(_pos == 6){ return cell7(chip); }
+            if(_pos == 7){ return cell8(chip); }
+            if(_pos == 8){ return cell9(chip); }
         }
-        if(step == 9){ return 3; } else { return 0;}
+        if(step == 9){ return 3; }
     }
     
 
@@ -108,38 +110,44 @@ contract XOGameBoard{
     }
 
     function move(uint8 _pos) public isPlayer{
-        require(board[_pos] == 0);
+        step++;
         if(checkWinner(_pos) == 1){ // player1 winner
-            emit Winnner("Winner Player 1", address(this).balance);
+            emit Winner("Winner Player 1");
             selfdestruct(player1);
         }
         if(checkWinner(_pos) == 2){ // player2 winner
-            emit Winnner("Winner Player 2", address(this).balance);
+            emit Winner("Winner Player 2");
             selfdestruct(player2);
         }
         if(checkWinner(_pos) == 3){ // drawe
-            emit Winnner("DRAWE ", address(this).balance / 2);
+            emit Winner("DRAWE");
             player2.transfer(address(this).balance / 2);
             selfdestruct(player1);
         }
-        if(checkWinner(_pos) == 0){ // 0
+    }
+    
+    // emulation of the 3x3 game board
+    function move3x3(uint8 row, uint8 col) public isPlayer{
+        require(row <=3 || col <= 3);
+        if(row == 0){
+            if(col == 0) move(1);
+            if(col == 1) move(2);
+            if(col == 2) move(3);
+        }
+        if(row == 1){
+            if(col == 0) move(4);
+            if(col == 1) move(5);
+            if(col == 2) move(6);
+        }
+        if(row == 3){
+            if(col == 0) move(7);
+            if(col == 1) move(8);
+            if(col == 2) move(9);
         }
     }
     
-    ///////// 
-    function getBalance() public view returns(uint256){
-        return address(this).balance;
-    }
-    
-    function getOwner() public view returns(address, address){
-        return (player1, player2);
-    }
-    
-    function getBoard() public view returns(uint8[10]){
+    // return gameboard
+    function getBoard() public view isPlayer returns(uint8[9]){
         return board;
-    }
-    
-    function getBoardLength() public view returns(uint256){
-        return board.length;
     }
 }
