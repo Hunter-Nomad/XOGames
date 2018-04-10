@@ -37,3 +37,4 @@
 	<b>getBoard</b> - Возвращает состояние игрового поля; </br>
 	<b>sendBalance</b> - Пересылка баланса контракта XOGames, от имени владельца контракта XOGames, на указанный адрес; </br>	
 </p>
+<p>XOGames контракт в тестовой сети rinkeby <a href="https://rinkeby.etherscan.io/address/0x8FA22B00326fdcbCB7AFAbd281E4FCE0256d507d" target="_blank">XOGames</a></p>
